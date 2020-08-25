@@ -1,0 +1,23 @@
+{
+  "name": "orbit-db-powergate-io",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orbitdb/orbit-db-powergate-io.git"
+  },
+  "keywords": [],
+  "author": "Mark Robert Henderson <mark@mrh.io>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/orbitdb/orbit-db-powergate-io/issues"
+  },
+  "homepage": "https://github.com/orbitdb/orbit-db-powergate-io#readme"
+}
