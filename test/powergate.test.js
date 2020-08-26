@@ -25,11 +25,12 @@ describe('Powergate setup', () => {
   it('does something else', async () => {
     const { addrsList } = await pow.ffs.addrs()
     const { addr } = await pow.ffs.newAddr("my new addr")
+    await waitForBalance(pow.ffs, addr, 0)
     const { info } = await pow.ffs.info()
 
     // TODO: Replace this with OrbitDB stuff....
     // maybe log snapshot to CID?
-    const buffer = fs.readFileSync(`./.gitignore`)
+    const buffer = fs.readFileSync(`./package.json`)
     const { cid } = await pow.ffs.stage(buffer)
     const { jobId } = await pow.ffs.pushStorageConfig(cid)
 
@@ -57,4 +58,30 @@ describe('Powergate setup', () => {
     // await pow.ffs.sendFil(addrsList[0].addr, "<some other address>", 1000)
   })
 })
+
+function waitForBalance(ffs, address, greaterThan) {
+  return new Promise(async (resolve, reject) => {
+    while (true) {
+      try {
+        const res = await ffs.info()
+        if (!res.info) {
+          reject("no balance info returned")
+          return
+        }
+        const info = res.info.balancesList.find((info) => info.addr && info.addr.addr === address)
+        if (!info) {
+          reject("address not in balances list")
+          return
+        }
+        if (info.balance > greaterThan) {
+          resolve(info.balance)
+          return
+        }
+      } catch (e) {
+        reject(e)
+      }
+      await new Promise((r) => setTimeout(r, 1000))
+    }
+  })
+}
 
