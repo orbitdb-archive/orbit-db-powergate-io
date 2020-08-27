@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "nyc mocha"
   },
   "repository": {
     "type": "git",
@@ -21,7 +21,8 @@
   },
   "homepage": "https://github.com/orbitdb/orbit-db-powergate-io#readme",
   "devDependencies": {
-    "mocha": "^8.1.2"
+    "mocha": "^8.1.2",
+    "nyc": "^15.1.0"
   },
   "dependencies": {
     "@textile/powergate-client": "^1.0.0"
