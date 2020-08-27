@@ -19,5 +19,11 @@
   "bugs": {
     "url": "https://github.com/orbitdb/orbit-db-powergate-io/issues"
   },
-  "homepage": "https://github.com/orbitdb/orbit-db-powergate-io#readme"
+  "homepage": "https://github.com/orbitdb/orbit-db-powergate-io#readme",
+  "devDependencies": {
+    "mocha": "^8.1.2"
+  },
+  "dependencies": {
+    "@textile/powergate-client": "^1.0.0"
+  }
 }
