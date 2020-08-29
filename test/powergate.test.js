@@ -6,7 +6,6 @@ const { JobStatus } = require ('@textile/grpc-powergate-client/dist/ffs/rpc/rpc_
 const { waitForBalance } = require('./utils')
 const IpfsClient = require('ipfs-http-client')
 
-
 describe('Powergate setup', function () {
   let id, token, logsCancel, jobsCancel
 

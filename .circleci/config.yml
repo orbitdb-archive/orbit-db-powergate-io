@@ -12,6 +12,7 @@ jobs:
       - run:
           command: git checkout $CIRCLE_BRANCH
           working_directory: ./orbit-db-powergate-io
+      # - run: git apply ./orbit-db-powergate-io/test/patches/*
       - run:
           command: make localnet
           working_directory: ./powergate/docker
