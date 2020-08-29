@@ -9,7 +9,7 @@ const IpfsClient = require('ipfs-http-client')
 describe('Powergate setup', function () {
   let id, token, logsCancel, jobsCancel
 
-  this.timeout(240000)
+  this.timeout(100000)
 
   const host = "http://0.0.0.0:6002"
   const pow = createPow({ host })

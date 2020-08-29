@@ -8,15 +8,27 @@ jobs:
       image: ubuntu-1604:201903-01
     steps:
       - run: git clone https://github.com/textileio/powergate
-      - run: git clone https://github.com/orbitdb/orbit-db-powergate-io
-      - run:
-          command: git checkout $CIRCLE_BRANCH
-          working_directory: ./orbit-db-powergate-io
-      # - run: git apply ./orbit-db-powergate-io/test/patches/*
       - run:
           command: make localnet
           working_directory: ./powergate/docker
           background: true
+      - run: git clone https://github.com/orbitdb/orbit-db-powergate-io
+      - run: git clone https://github.com/orbitdb/orbit-db-store
+      - run: |
+          source ~/.bashrc
+          nvm install 12
+          nvm use 12
+      - run:
+          command: |
+            source ~/.bashrc
+            nvm use 12
+            git checkout fix/remove-streams
+            npm link
+          working_directory: ./orbit-db-store
+      - run:
+          command: git checkout $CIRCLE_BRANCH
+          working_directory: ./orbit-db-powergate-io
+      # - run: git apply ./orbit-db-powergate-io/test/patches/*
       # We need this to retry on all errors because we need a retry
       # on connection refused AND connection reset by peer. It's very
       # messy, but it works and gets us to the next build phase.
@@ -27,8 +39,9 @@ jobs:
       - run:
           command: |
             source ~/.bashrc
-            nvm install 12
+            nvm use 12
             npm install
+            npm link orbit-db-store
             npm test
           working_directory: ./orbit-db-powergate-io
 

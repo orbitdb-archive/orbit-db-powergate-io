@@ -21,13 +21,13 @@
   },
   "homepage": "https://github.com/orbitdb/orbit-db-powergate-io#readme",
   "devDependencies": {
-    "ipfs-http-client": "^45.0.0",
     "mocha": "^8.1.2",
     "nyc": "^15.1.0",
-    "orbit-db": "^0.25.1",
     "rimraf": "^3.0.2"
   },
   "dependencies": {
-    "@textile/powergate-client": "^1.0.0"
+    "ipfs-http-client": "^45.0.0",
+    "@textile/powergate-client": "^1.0.0",
+    "orbit-db": "^0.25.1"
   }
 }
