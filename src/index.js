@@ -58,13 +58,19 @@ class PowergateIO {
     /** @member { powergate-client } */
     this._pow = pow
 
-    /** @member { Object } FIL wallet info for the PowergateIO node */
+    /**
+     * FIL wallet info on the Powergate node
+     * @member { Object }
+     */
     this.wallet = {}
     waitForBalance(pow.ffs, addr, 0).then((info) => {
       this.wallet = info
     })
 
-    /** @member { intervalID[] } an array of intervalIDs that watch jobs*/
+    /**
+     * An array of intervalIDs that watch jobs
+     * @member { intervalID[] }
+     */
     this._jobWatchers = []
   }
 
