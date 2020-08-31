@@ -3,6 +3,9 @@ const fs = require('fs')
 const { createPow } = require('@textile/powergate-client')
 const { JobStatus } = require ('@textile/grpc-powergate-client/dist/ffs/rpc/rpc_pb')
 
+const { waitForBalance } = require('./utils')
+const IpfsClient = require('ipfs-http-client')
+
 
 describe('Powergate setup', function () {
   let id, token, logsCancel, jobsCancel
@@ -11,84 +14,93 @@ describe('Powergate setup', function () {
 
   const host = "http://0.0.0.0:6002"
   const pow = createPow({ host })
+  const ipfs = new IpfsClient()
+  const buffer = fs.readFileSync(`./package.json`)
 
-  before(async () => {
+  after(async () => {
+    // await jobsCancel()
+    // await logsCancel()
+  })
+
+  it('creates an FFS and assigns a token', async () => {
     const ffs = await pow.ffs.create()
     pow.setToken(ffs.token)
   })
 
-  after(async () => {
-    await jobsCancel()
-    await logsCancel()
-  })
-
-  it('Setting up a FFS instance and address', async () => {
-    // const { status, messagesList } = await pow.health.check()
-    // const { peersList } = await pow.net.peers()
-    // const { addrsList } = await pow.ffs.addrs()
-    const { addr } = await pow.ffs.newAddr("my new addr")
+  it('assigns a wallet address', async () => {
+    const name = 'powergate.test.js'
+    const { addr } = await pow.ffs.newAddr(name)
     await waitForBalance(pow.ffs, addr, 0)
+
+    const { addrsList } = await pow.ffs.addrs()
+    const result = addrsList.filter(a => a.addr === addr)[0]
+
+    assert.strictEqual(result.addr, addr)
+    assert.strictEqual(result.name, name)
+    assert.strictEqual(result.type, 'bls')
   })
 
-  it('Successfully creates storage deal', (done) => {
-    (async () => {
-      const { info } = await pow.ffs.info()
+  it('has the correct configuration', async () => {
+    const { info } = await pow.ffs.info()
+    const config = info.defaultStorageConfig
 
-      // maybe log snapshot to CID?
-      const buffer = fs.readFileSync(`./package.json`)
+    assert.strictEqual(config.hot.enabled, true)
+    assert.strictEqual(config.hot.allowUnfreeze, false)
+    assert.strictEqual(config.cold.enabled, true)
+    assert.strictEqual(config.repairable, false)
+  })
+
+  it('creates a healthy powergate', async () => {
+    const { status, messagesList } = await pow.health.check()
+
+    // TODO: Replace with named enum variant
+    assert.strictEqual(status, 1)
+    assert.deepStrictEqual(messagesList, [])
+  })
+
+  it('properly stores hot data in IPFS', async () => {
+    const { cid } = await pow.ffs.stage(buffer)
+
+    const result = await ipfs.get(cid)
+
+    // TODO: Better syntax for these?
+    for await (let data of result) {
+      assert.strictEqual(data.path, cid)
+      for await (let content of data.content) {
+        assert.deepStrictEqual(content._bufs[0], buffer)
+      }
+    }
+  })
+
+  it('creates storage deal and then retrieves data', (done) => {
+    (async () => {
       const { cid } = await pow.ffs.stage(buffer)
       const { jobId } = await pow.ffs.pushStorageConfig(cid)
 
       console.log("\twaiting for job to complete... probably about 2 mins")
       jobsCancel = pow.ffs.watchJobs(async (job) => {
         if (job.status === JobStatus.JOB_STATUS_CANCELED) {
-          console.log("job canceled")
-        } else if (job.status === JobStatus.JOB_STATUS_FAILED) {
-          assert(false)
+          assert(false, 'job canceled')
           done()
-          console.log("job failed")
+        } else if (job.status === JobStatus.JOB_STATUS_FAILED) {
+          assert(false, 'job failed')
+          done()
         } else if (job.status === JobStatus.JOB_STATUS_SUCCESS) {
           const { config } = await pow.ffs.getStorageConfig(cid)
-
           const { cidInfo } = await pow.ffs.show(cid)
-
           const bytes = await pow.ffs.get(cid)
           assert.deepStrictEqual(buffer, Buffer.from(bytes))
-
+          jobsCancel()
           done()
         }
       }, jobId)
 
-      logsCancel = pow.ffs.watchLogs((logEvent) => {
-        console.log(`\treceived event for cid ${logEvent.cid}`)
-      }, cid)
+      // TODO: Something here
+      // logsCancel = pow.ffs.watchLogs((logEvent) => {
+        // console.log(logEvent)
+        // console.log(`\treceived event for cid ${logEvent.cid}`)
+      // }, cid)
     })()
   })
 })
-
-function waitForBalance(ffs, address, greaterThan) {
-  return new Promise(async (resolve, reject) => {
-    while (true) {
-      try {
-        const res = await ffs.info()
-        if (!res.info) {
-          reject("no balance info returned")
-          return
-        }
-        const info = res.info.balancesList.find((info) => info.addr && info.addr.addr === address)
-        if (!info) {
-          reject("address not in balances list")
-          return
-        }
-        if (info.balance > greaterThan) {
-          resolve(info.balance)
-          return
-        }
-      } catch (e) {
-        reject(e)
-      }
-      await new Promise((r) => setTimeout(r, 1000))
-    }
-  })
-}
 
