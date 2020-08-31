@@ -43,7 +43,105 @@
 
 
     <section>
-        <article><h1>orbit-db-powergate-io</h1></article>
+        <article><h1>PowergateIO (orbit-db-powergate-io)</h1>
+<blockquote>
+<p>A bridge between <a href="https://github.com/orbitdb/orbit-db">OrbitDB</a> and <a href="https://docs.textile.io/powergate/">Powergate</a>, which is itself a bridge between <a href="https://filecoin.io">Filecoin</a> and <a href="https://ipfs.io/">IPFS</a>.</p>
+</blockquote>
+<h2>Install</h2>
+<p><code>npm install orbit-db-powergate-io</code></p>
+<h3>From Source</h3>
+<pre class="prettyprint source lang-bash"><code>$ git clone https://github.com/orbitdb/orbit-db-powergate-io
+$ cd orbit-db-powergate-io
+$ npm install
+</code></pre>
+<h2>Usage</h2>
+<p>PowergateIO is designed to work with only one configuration option: the gRPC
+endpoint of the Powergate node you want to connect to. Everything else should be handled
+&quot;under the hood&quot; for you. See below.</p>
+<h3>Initial Setup</h3>
+<pre class="prettyprint source lang-JavaScript"><code>const PowergateIO = require('orbit-db-powergate-io')
+
+const host = 'http://0.0.0.0:6002' // This is the default value
+PowergateIO.create(host)
+  .then((powergateio) => {
+    console.log(powergateio.wallet) // Will be {} until funded
+  })
+</code></pre>
+<h3>Backing up an OrbitDB Snapshot</h3>
+<p>PowergateIO is meant to be used from one IPFS node to another, and to replicate
+OrbitDB databases between them. So, let's assume that we have an IPFS node and
+OrbitDB running locally, and we're going to interact with a <em>remote</em> Powergate
+instance.</p>
+<pre class="prettyprint source lang-JavaScript"><code>const IPFS = require('ipfs')
+const OrbitDB = require('orbit-db')
+const PowergateIO = require('orbit-db-powergate-io')
+
+;(async () => {
+  const ipfs = await IPFS.create()
+  const orbitdb = await OrbitDB.createInstance(ipfs)
+  powergateio = await PowergateIO.create('https://my.hosted.powergate.node')
+
+  const addresses = (await powergateio.ipfs.id()).addresses
+  await ipfs.swarm.connect(addresses[0].toString())
+
+  const db = await orbitdb.eventlog('powergate-test')
+  for (let i = 0; i &lt; 10; i++) {
+    await db.add(`entry${i}`)
+  }
+
+  jobStatus = await powergateio.storeSnapshot(db.address.toString())
+  console.log(jobStatus)
+
+  // Wait until wallet is funded
+  // Can take up to 2 minute on testnet
+  console.log(powergateio.wallet)
+
+  await powergateio.stop()
+  await orbitdb.disconnect()
+  await ipfs.stop()
+})()
+</code></pre>
+<h3>Retrieving an OrbitDB Snapshot</h3>
+<p>Once you've stored a snapshot and have made note of the DB address returned,
+you can use that db address to retrieve the snapshot!</p>
+<pre class="prettyprint source lang-JavaScript"><code>const IPFS = require('ipfs')
+const OrbitDB = require('orbit-db')
+const PowergateIO = require('orbit-db-powergate-io')
+
+;(async () => {
+  const ipfs = await IPFS.create()
+  const orbitdb = await OrbitDB.createInstance(ipfs)
+  const powergateio = await PowergateIO.create('https://my.hosted.powergate.node')
+
+  const addresses = (await powergateio.ipfs.id()).addresses
+  await ipfs.swarm.connect(addresses[0].toString())
+
+  const dbAddr = '/orbitdb/zdpuAxkdoDum8Nk2VCxKkHZk8TzqAYPm86mVgoy7wagu2UcZB/powergate-test'
+  const db2 = await orbitdb.open(dbAddr, { create: true })
+  const snapshot = await powergateio.retrieveSnapshot(dbAddr)
+
+  await db2._oplog.join(snapshots[0].log)
+  await db2._updateIndex()
+})()
+</code></pre>
+<p>For more information, see the <a href="https://orbitdb.github.io/orbit-db-powergate-io/PowergateIO.html">API docs</a>.</p>
+<h2>Contributing</h2>
+<p>Issues and pull requests accepted. Please note that several issues have &quot;<a href="(https://github.com/orbitdb/orbit-db-powergate-io/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)">Help Wanted</a>&quot;
+and &quot;<a href="(https://github.com/orbitdb/orbit-db-powergate-io/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)">Good First Issue</a>&quot; tags!</p>
+<h3>Developing Locally</h3>
+<p>It's highly recommended to install both Docker and Docker compose. From there, <code>make</code> is your
+best friends. It gives you the following commands:</p>
+<ul>
+<li><code>make up</code> - Spins up all the necessary docker images for local development</li>
+<li><code>make lint</code> - Lints your JS code vi standard.js</li>
+<li><code>make docs</code> - Compiles the README and JS docstrings into the docs/ folder</li>
+<li><code>make down</code> - Spins down all the docker images</li>
+<li><code>make clean</code> - Removes ephemeral files and folders like node_modules and package-lock.json</li>
+<li><code>make test</code> - Does a whole bunch of the above, in order. <em>use it!</em></li>
+<li><code>make rebuild</code> - runs <code>make clean</code> and <code>make deps</code> to give you a clean slate.</li>
+</ul>
+<h2>License</h2>
+<p>MIT © OrbitDB Community</p></article>
     </section>
 
 
@@ -54,13 +152,13 @@
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Externals</h3><ul><li><a href="external-IPFS.html">IPFS</a></li><li><a href="external-ipfs-log.html">ipfs-log</a></li><li><a href="external-OrbitDB.html">OrbitDB</a></li><li><a href="external-powergate-client.html">powergate-client</a></li></ul><h3>Classes</h3><ul><li><a href="PowergateIO.html">PowergateIO</a></li></ul><h3>Global</h3><ul><li><a href="global.html#an">an</a></li><li><a href="global.html#FIL">FIL</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Externals</h3><ul><li><a href="external-IPFS.html">IPFS</a></li><li><a href="external-ipfs-log.html">ipfs-log</a></li><li><a href="external-OrbitDB.html">OrbitDB</a></li><li><a href="external-powergate-client.html">powergate-client</a></li></ul><h3>Classes</h3><ul><li><a href="PowergateIO.html">PowergateIO</a></li></ul><h3><a href="global.html">Global</a></h3>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Tue Sep 22 2020 12:32:20 GMT-0400 (Eastern Daylight Time)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.6</a> on Tue Sep 22 2020 14:42:39 GMT-0400 (Eastern Daylight Time)
 </footer>
 
 <script> prettyPrint(); </script>
