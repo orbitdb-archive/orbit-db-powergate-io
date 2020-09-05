@@ -27,4 +27,3 @@ function waitForBalance(ffs, address, greaterThan) {
 module.exports = {
   waitForBalance
 }
-
