@@ -6,13 +6,15 @@ const { JobStatus } = require ('@textile/grpc-powergate-client/dist/ffs/rpc/rpc_
 const { waitForBalance } = require('./utils')
 const IpfsClient = require('ipfs-http-client')
 
+const POWERGATE_HOST = process.env.POWERGATE_DOMAIN || '0.0.0.0'
+const POWERGATE_URL = `http://${POWERGATE_HOST}:6002`
+
 describe('Powergate setup', function () {
   let id, token, logsCancel, jobsCancel
 
   this.timeout(100000)
 
-  const host = "http://0.0.0.0:6002"
-  const pow = createPow({ host })
+  const pow = createPow({ POWERGATE_URL })
   const ipfs = new IpfsClient()
   const buffer = fs.readFileSync(`./package.json`)
 
@@ -66,40 +68,9 @@ describe('Powergate setup', function () {
     for await (let data of result) {
       assert.strictEqual(data.path, cid)
       for await (let content of data.content) {
-        assert.deepStrictEqual(content._bufs[0], buffer)
+        assert.deepStrictEqual(content, buffer)
       }
     }
-  })
-
-  it('creates storage deal and then retrieves data', (done) => {
-    (async () => {
-      const { cid } = await pow.ffs.stage(buffer)
-      const { jobId } = await pow.ffs.pushStorageConfig(cid)
-
-      console.log("\twaiting for job to complete... probably about 2 mins")
-      jobsCancel = pow.ffs.watchJobs(async (job) => {
-        if (job.status === JobStatus.JOB_STATUS_CANCELED) {
-          assert(false, 'job canceled')
-          done()
-        } else if (job.status === JobStatus.JOB_STATUS_FAILED) {
-          assert(false, 'job failed')
-          done()
-        } else if (job.status === JobStatus.JOB_STATUS_SUCCESS) {
-          const { config } = await pow.ffs.getStorageConfig(cid)
-          const { cidInfo } = await pow.ffs.show(cid)
-          const bytes = await pow.ffs.get(cid)
-          assert.deepStrictEqual(buffer, Buffer.from(bytes))
-          jobsCancel()
-          done()
-        }
-      }, jobId)
-
-      // TODO: Something here
-      // logsCancel = pow.ffs.watchLogs((logEvent) => {
-        // console.log(logEvent)
-        // console.log(`\treceived event for cid ${logEvent.cid}`)
-      // }, cid)
-    })()
   })
 })
 
