@@ -28,6 +28,6 @@
   "dependencies": {
     "ipfs-http-client": "^45.0.0",
     "@textile/powergate-client": "^1.0.0",
-    "orbit-db": "^0.25.1"
+    "orbit-db": "^0.25.3"
   }
 }
