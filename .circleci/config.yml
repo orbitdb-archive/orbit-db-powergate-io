@@ -7,24 +7,16 @@ jobs:
     machine:
       image: ubuntu-1604:201903-01
     steps:
+      - run: |
+          source ~/.bashrc
+          nvm install 12
+          nvm use 12
       - run: git clone https://github.com/textileio/powergate
       - run:
           command: make localnet
           working_directory: ./powergate/docker
           background: true
       - run: git clone https://github.com/orbitdb/orbit-db-powergate-io
-      - run: git clone https://github.com/orbitdb/orbit-db-store
-      - run: |
-          source ~/.bashrc
-          nvm install 12
-          nvm use 12
-      - run:
-          command: |
-            source ~/.bashrc
-            nvm use 12
-            git checkout fix/remove-streams
-            npm link
-          working_directory: ./orbit-db-store
       - run:
           command: git checkout $CIRCLE_BRANCH
           working_directory: ./orbit-db-powergate-io
