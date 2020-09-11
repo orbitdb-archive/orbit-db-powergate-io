@@ -26,8 +26,10 @@
     "rimraf": "^3.0.2"
   },
   "dependencies": {
-    "ipfs-http-client": "^45.0.0",
     "@textile/powergate-client": "^1.0.0",
-    "orbit-db": "^0.25.3"
+    "ipfs-http-client": "^47.0.0",
+    "ipfs-log": "^5.0.0",
+    "orbit-db": "^0.26.0-rc3",
+    "orbit-db-test-utils": "^0.12.1"
   }
 }

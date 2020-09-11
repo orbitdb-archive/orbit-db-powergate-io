@@ -5,9 +5,12 @@ services:
   ipfs:
     image: ipfs/go-ipfs:v0.6.0
     ports:
+      - 4001:4001
       - 5001:5001
+    command: ["daemon", "--migrate=true", "--enable-pubsub-experiment"]
 
   powergate:
+    image: textile/powergate:v0.6.0-rc4
     ports:
       - 8889:8889
       - 8888:8888
@@ -25,7 +28,7 @@ services:
     restart: unless-stopped
 
   lotus:
-    image: textile/lotus-devnet:ntwk-calibration-8.13.1.f0942
+    image: textile/lotus-devnet:sha-ce1d788
     ports:
       - 7777:7777
     environment:
