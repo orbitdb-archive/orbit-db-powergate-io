@@ -21,7 +21,7 @@ const POWERGATE_URL = `http://${POWERGATE_HOSTNAME}:6002`
 const IPFS_HTTP_URL = process.env.IPFS_HTTP_URL || 'http://localhost:5001'
 
 Object.keys(testAPIs).forEach(API => {
-  describe("PowergateIO - default options", function () {
+  describe(`PowergateIO - default options (${API})`, function () {
     let ipfsd, orbitdb, powergateio
 
     this.timeout(120000)
@@ -29,7 +29,7 @@ Object.keys(testAPIs).forEach(API => {
     before(async () => {
       rm('./orbitdb', () => {})
 
-      ipfsd = await startIpfs('js-ipfs', config.daemon1)
+      ipfsd = await startIpfs(API, config.daemon1)
       orbitdb = await OrbitDB.createInstance(ipfsd.api)
       powergateio = await PowergateIO.create()
 
