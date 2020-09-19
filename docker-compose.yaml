@@ -10,7 +10,7 @@ services:
     command: ["daemon", "--migrate=true", "--enable-pubsub-experiment"]
 
   powergate:
-    image: textile/powergate:v0.6.0-rc4
+    image: textile/powergate:v0.6.0
     ports:
       - 8889:8889
       - 8888:8888

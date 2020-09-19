@@ -22,6 +22,14 @@ jobs:
             npm install
             npm test
           working_directory: ./orbit-db-powergate-io
+   # Commented out until hosted peer is dialiable
+   # - run:
+   #     command: |
+   #       source ~/.bashrc
+   #       nvm use 12
+   #       echo $HOSTED_POWERGATE
+   #       POWERGATE_HREF=$HOSTED_POWERGATE npm test
+   #     working_directory: ./orbit-db-powergate-io
 
 workflows:
   test:

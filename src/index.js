@@ -2,7 +2,8 @@ const OrbitDB = require('orbit-db')
 const { createPow } = require('@textile/powergate-client')
 const IpfsClient = require('ipfs-http-client')
 const {
-  parseURL,
+  filterPublicMultiaddr,
+  generateIPFSOptions,
   waitForBalance,
 } = require('./utils')
 const Log = require('ipfs-log')
@@ -23,10 +24,14 @@ const snapshotJob = async (pow, jobId) => {
 }
 
 class PowergateIO {
-  constructor(databases, orbitdb, pow, defaultAddr) {
+  constructor(databases, orbitdb, pow) {
     this.databases = databases
     this._orbitdb = orbitdb
     this._pow = pow
+  }
+
+  get ipfs() {
+    return this._orbitdb._ipfs
   }
 
   // TODO: Config
@@ -36,19 +41,16 @@ class PowergateIO {
     const ffs = await pow.ffs.create()
     pow.setToken(ffs.token)
 
-    // TODO: Get IPFS info from powergate?
-    const ipfsOptions = parseURL(host)
-    const ipfs = new IpfsClient(ipfsOptions, {
-      headers: {
-        'x-ipfs-ffs-auth': ffs.token
-      }
-    })
+    const ipfsOptions = generateIPFSOptions(host, ffs.token)
+    const ipfs = new IpfsClient(ipfsOptions)
     const orbitdb = await OrbitDB.createInstance(ipfs)
+
+    const addresses = (await ipfs.id()).addresses
 
     const jobsDb = await orbitdb.docs('jobs', { indexBy: 'id' })
 
-
     // Create default address
+    // TODO: Background this...
     const { addr } = await pow.ffs.newAddr("_default")
     await waitForBalance(pow.ffs, addr, 0)
 
@@ -83,13 +85,13 @@ class PowergateIO {
       this._orbitdb.open(dbAddress).then(async (db) => {
         let replicationComplete = false
 
-        db.events.on('replicate.progress', async (dbAddress, hash, entry) => {
+        db.events.on('replicate.progress', (dbAddress, hash, entry) => {
           if (entry.next.length === 0) {
             replicationComplete = true
           }
         })
 
-        db.events.on('replicated', async (e,f,b) => {
+        db.events.on('replicated', async () => {
           if (replicationComplete) {
             await db.load()
 

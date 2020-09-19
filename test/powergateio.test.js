@@ -3,35 +3,49 @@ const PowergateIO = require('../src')
 const OrbitDB = require('orbit-db')
 const { createPow } = require('@textile/powergate-client')
 const { JobStatus } = require ('@textile/grpc-powergate-client/dist/ffs/rpc/rpc_pb')
-const { waitForBalance } = require('./utils')
 const IpfsClient = require('ipfs-http-client')
 const rm = require('rimraf')
 
 const {
   config,
-  connectPeers,
   startIpfs,
   stopIpfs,
   testAPIs,
   waitForPeers
 } = require('orbit-db-test-utils')
 
-const POWERGATE_HOSTNAME = process.env.POWERGATE_HOSTNAME || '0.0.0.0'
-const POWERGATE_URL = `http://${POWERGATE_HOSTNAME}:6002`
-const IPFS_HTTP_URL = process.env.IPFS_HTTP_URL || 'http://localhost:5001'
+const POWERGATE_HREF = process.env.POWERGATE_HREF || 'http://0.0.0.0:6002'
+const IS_REMOTE = (POWERGATE_HREF !== 'http://0.0.0.0:6002')
 
 Object.keys(testAPIs).forEach(API => {
   describe(`PowergateIO - default options (${API})`, function () {
     let ipfsd, orbitdb, powergateio
 
-    this.timeout(120000)
+    const timeout = IS_REMOTE ? 120000 : 10000
+    this.timeout(timeout)
 
     before(async () => {
       rm('./orbitdb', () => {})
 
+      // TODO: Whittle away at these and figure out what's what
+      config.daemon1.config.Addresses.Swarm = [
+        "/ip4/0.0.0.0/tcp/0",
+        // "/ip6/::/tcp/0",
+        // "/ip4/0.0.0.0/udp/0/quic",
+        // "/ip6/::/udp/0/quic"
+      ]
+      config.daemon1.config.Addresses.Announce = []
+      config.daemon1.config.Addresses.NoAnnounce = []
+      config.daemon1.config.Discovery.MDNS.Interval = 10
+      config.daemon1.config.AutoNAT = {}
+      config.daemon1.config.Routing = { type: 'dht' }
+      config.daemon1.config.Swarm = {}
+      config.daemon1.config.Swarm.DisableNatPortMap = false
+
       ipfsd = await startIpfs(API, config.daemon1)
+      // await ipfsd.api.bootstrap.add({ default: true })
       orbitdb = await OrbitDB.createInstance(ipfsd.api)
-      powergateio = await PowergateIO.create()
+      powergateio = await PowergateIO.create(POWERGATE_HREF)
 
       // const { info } = await pow.ffs.info()
       // const { status, messagesList } = await pow.health.check()
@@ -44,10 +58,12 @@ Object.keys(testAPIs).forEach(API => {
     })
 
     it('successfully connects with the Powergate peer', async () => {
-      await connectPeers(ipfsd.api, powergateio._orbitdb._ipfs, {
-        // Remove any 'quic' addresses from the available options
-        filter: (addr) => addr.protos().filter(p => p.name === 'quic').length === 0
-      })
+      const peerId = (await ipfsd.api.id()).id
+      const addresses = (await ipfsd.api.id()).addresses
+      await powergateio.ipfs.swarm.connect(addresses[addresses.length - 1])
+      const peers1 = await powergateio.ipfs.swarm.peers()
+      // TODO: test peers connected
+      // console.log(peers1)
     })
 
     it("creates a jobs db", async () => {
@@ -57,7 +73,7 @@ Object.keys(testAPIs).forEach(API => {
 
     describe("stores and retrieves a db snapshot - permissionless", function () {
       let db, db2, snapshots
-      const logLength = 100
+      const logLength = 10
       let jobStatus
 
       before(async () => {

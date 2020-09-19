@@ -26,17 +26,31 @@ function waitForBalance(ffs, address, greaterThan) {
   })
 }
 
-const parseURL = (host) => {
+const filterPublicMultiaddr = (addresses) => {
+  const publicAddrs = addresses.map(a => a.toString())
+                            .filter(a => a.indexOf('ip6') === -1)
+                            .filter(a => a.indexOf('quic') === -1)
+                            .filter(a => a.indexOf('127.0.0.1') === -1)
+                            .filter(a => a.indexOf('ip4/192.168') === -1)
+                            .filter(a => a.indexOf('ip4/10.') === -1)
+                            .filter(a => a.indexOf('ip4/172.1') === -1)
+
+  return publicAddrs
+}
+
+const generateIPFSOptions = (host, token) => {
   const urlObj = url.parse(host)
   const ipfsOptions = {
     host: urlObj.hostname,
-    port: 5001, // urlObj.port,
-    protocol: urlObj.protocol.replace(':', '')
+    port: urlObj.port || 443,
+    protocol: urlObj.protocol.replace(':', ''),
+    headers: { 'x-ipfs-ffs-auth': token }
   }
   return ipfsOptions
 }
 
 module.exports = {
-  parseURL,
+  filterPublicMultiaddr,
+  generateIPFSOptions,
   waitForBalance
 }
