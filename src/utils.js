@@ -1,3 +1,5 @@
+const url = require('url')
+
 function waitForBalance(ffs, address, greaterThan) {
   return new Promise(async (resolve, reject) => {
     while (true) {
@@ -24,6 +26,17 @@ function waitForBalance(ffs, address, greaterThan) {
   })
 }
 
+const parseURL = (host) => {
+  const urlObj = url.parse(host)
+  const ipfsOptions = {
+    host: urlObj.hostname,
+    port: 5001, // urlObj.port,
+    protocol: urlObj.protocol.replace(':', '')
+  }
+  return ipfsOptions
+}
+
 module.exports = {
+  parseURL,
   waitForBalance
 }
