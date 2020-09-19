@@ -28,18 +28,22 @@ class PowergateIO {
 
   // TODO: Config
   // TODO: Call this createDefault?
-  static async create(host="http://0.0.0.0:6002",
-    ipfsOptions = { host:"0.0.0.0", port:"5001"}) {
-
+  static async create(host="http://0.0.0.0:6002") {
     const pow = createPow({ host })
+    const ffs = await pow.ffs.create()
+    pow.setToken(ffs.token)
+
     // TODO: Get IPFS info from powergate?
-    const ipfs = new IpfsClient(ipfsOptions)
+    const ipfsOptions = parseURL(host)
+    const ipfs = new IpfsClient(ipfsOptions, {
+      headers: {
+        'x-ipfs-ffs-auth': ffs.token
+      }
+    })
     const orbitdb = await OrbitDB.createInstance(ipfs)
 
     const jobsDb = await orbitdb.docs('jobs', { indexBy: 'id' })
 
-    const ffs = await pow.ffs.create()
-    pow.setToken(ffs.token)
 
     // Create default address
     const { addr } = await pow.ffs.newAddr("_default")
