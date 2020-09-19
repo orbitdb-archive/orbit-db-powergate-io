@@ -1,7 +1,10 @@
 const OrbitDB = require('orbit-db')
 const { createPow } = require('@textile/powergate-client')
 const IpfsClient = require('ipfs-http-client')
-const { waitForBalance } = require('./utils')
+const {
+  parseURL,
+  waitForBalance,
+} = require('./utils')
 const Log = require('ipfs-log')
 
 // Workaround wrapper function
