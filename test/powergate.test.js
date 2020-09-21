@@ -1,7 +1,6 @@
 const assert = require('assert')
 const fs = require('fs')
 const { createPow } = require('@textile/powergate-client')
-const { JobStatus } = require ('@textile/grpc-powergate-client/dist/ffs/rpc/rpc_pb')
 
 const {
   startIpfs,
@@ -17,22 +16,17 @@ const {
 } = require('../src/utils')
 const IpfsClient = require('ipfs-http-client')
 
-const POWERGATE_HREF = process.env.POWERGATE_HREF || `http://0.0.0.0:6002`
+const POWERGATE_HREF = process.env.POWERGATE_HREF || 'http://0.0.0.0:6002'
 const IS_REMOTE = (POWERGATE_HREF !== 'http://0.0.0.0:6002')
 
 describe('Powergate setup', function () {
-  let id, powIpfs, logsCancel, jobsCancel, token
+  let powIpfs, token
 
   const timeout = IS_REMOTE ? 120000 : 10000
   this.timeout(timeout)
 
   const pow = createPow({ host: POWERGATE_HREF })
-  const buffer = fs.readFileSync(`./package.json`)
-
-  after(async () => {
-    // await jobsCancel()
-    // await logsCancel()
-  })
+  const buffer = fs.readFileSync('./package.json')
 
   it('creates an FFS and assigns a token', async () => {
     const ffs = await pow.ffs.create()
@@ -86,9 +80,9 @@ describe('Powergate setup', function () {
     const result = await powIpfs.get(cid)
 
     // TODO: Better syntax for these?
-    for await (let data of result) {
+    for await (const data of result) {
       assert.strictEqual(data.path, cid)
-      for await (let content of data.content) {
+      for await (const content of data.content) {
         assert.deepStrictEqual(content, buffer)
       }
     }
@@ -97,12 +91,12 @@ describe('Powergate setup', function () {
   Object.keys(testAPIs).forEach(API => {
     describe(`pubsub tests (${API})`, function () {
       let ipfsd, localIpfs
-      let msg = 'xxxyyy'
+      const msg = 'xxxyyy'
 
       before(async () => {
         // TODO: Whittle away at these and figure out what's what
         config.daemon1.config.Addresses.Swarm = [
-          "/ip4/0.0.0.0/tcp/0",
+          '/ip4/0.0.0.0/tcp/0'
           // "/ip6/::/tcp/0",
           // "/ip4/0.0.0.0/udp/0/quic",
           // "/ip6/::/udp/0/quic"
@@ -125,7 +119,7 @@ describe('Powergate setup', function () {
         await stopIpfs(ipfsd)
       })
 
-      if(IS_REMOTE) {
+      if (IS_REMOTE) {
         it('finds its way through the local NAT', (done) => {
           const interval = setInterval(async () => {
             const addresses = (await localIpfs.id()).addresses
@@ -140,7 +134,7 @@ describe('Powergate setup', function () {
 
       it('can ask the powergate IPFS to connect to us', async () => {
         let addresses = (await localIpfs.id()).addresses
-        if(IS_REMOTE) {
+        if (IS_REMOTE) {
           addresses = filterPublicMultiaddr(addresses)
         }
         await powIpfs.swarm.connect(addresses[addresses.length - 1])
@@ -152,7 +146,6 @@ describe('Powergate setup', function () {
           done()
           await powIpfs.pubsub.unsubscribe('powergate-test')
         }).then(() => {
-
           setTimeout(() => {
             localIpfs.pubsub.publish('powergate-test', Buffer.from(msg))
           }, 1000)
@@ -172,4 +165,3 @@ describe('Powergate setup', function () {
     })
   })
 })
-

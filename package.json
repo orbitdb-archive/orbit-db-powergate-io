@@ -25,6 +25,9 @@
     "nyc": "^15.1.0",
     "rimraf": "^3.0.2"
   },
+  "standard": {
+    "env": "mocha"
+  },
   "dependencies": {
     "@textile/powergate-client": "^1.0.0",
     "ipfs-http-client": "^47.0.0",

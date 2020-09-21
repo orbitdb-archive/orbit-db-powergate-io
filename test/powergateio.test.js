@@ -1,17 +1,14 @@
 const assert = require('assert')
 const PowergateIO = require('../src')
 const OrbitDB = require('orbit-db')
-const { createPow } = require('@textile/powergate-client')
-const { JobStatus } = require ('@textile/grpc-powergate-client/dist/ffs/rpc/rpc_pb')
-const IpfsClient = require('ipfs-http-client')
+const { JobStatus } = require('@textile/grpc-powergate-client/dist/ffs/rpc/rpc_pb')
 const rm = require('rimraf')
 
 const {
   config,
   startIpfs,
   stopIpfs,
-  testAPIs,
-  waitForPeers
+  testAPIs
 } = require('orbit-db-test-utils')
 
 const POWERGATE_HREF = process.env.POWERGATE_HREF || 'http://0.0.0.0:6002'
@@ -29,7 +26,7 @@ Object.keys(testAPIs).forEach(API => {
 
       // TODO: Whittle away at these and figure out what's what
       config.daemon1.config.Addresses.Swarm = [
-        "/ip4/0.0.0.0/tcp/0",
+        '/ip4/0.0.0.0/tcp/0'
         // "/ip6/::/tcp/0",
         // "/ip4/0.0.0.0/udp/0/quic",
         // "/ip6/::/udp/0/quic"
@@ -54,24 +51,23 @@ Object.keys(testAPIs).forEach(API => {
     after(async () => {
       await orbitdb.disconnect()
       await powergateio.stop()
-      await ipfsd.stop()
+      await stopIpfs(ipfsd)
     })
 
     it('successfully connects with the Powergate peer', async () => {
       const peerId = (await ipfsd.api.id()).id
       const addresses = (await ipfsd.api.id()).addresses
       await powergateio.ipfs.swarm.connect(addresses[addresses.length - 1])
-      const peers1 = await powergateio.ipfs.swarm.peers()
-      // TODO: test peers connected
-      // console.log(peers1)
+      const peers = await powergateio.ipfs.swarm.peers()
+      assert(peers.filter(p => p.peer === peerId).length > 0)
     })
 
-    it("creates a jobs db", async () => {
+    it('creates a jobs db', async () => {
       assert.strictEqual(powergateio.databases.jobs.dbname, 'jobs')
       assert.strictEqual(powergateio.databases.jobs.type, 'docstore')
     })
 
-    describe("stores and retrieves a db snapshot - permissionless", function () {
+    describe('stores and retrieves a db snapshot - permissionless', function () {
       let db, db2, snapshots
       const logLength = 10
       let jobStatus
@@ -81,7 +77,7 @@ Object.keys(testAPIs).forEach(API => {
       })
 
       it(`makes a local eventlog with ${logLength} items`, async () => {
-        for(let i = 0; i < logLength; i++) {
+        for (let i = 0; i < logLength; i++) {
           await db.add(`entry${i}`)
         }
 
@@ -127,7 +123,7 @@ Object.keys(testAPIs).forEach(API => {
         await db2._oplog.join(snapshots[0].log)
         await db2._updateIndex()
 
-        for(let i in db2.index.values) {
+        for (const i in db2.index.values) {
           assert.strictEqual(db2.index.values[i].payload.value, `entry${i}`)
         }
       })

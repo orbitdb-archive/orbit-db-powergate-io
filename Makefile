@@ -3,13 +3,16 @@
 up:
 	BIGSECTORS=true docker-compose up -d
 
+lint:
+	npx standard
+
 deps:
 	npm install
 
 down:
 	BIGSECTORS=true docker-compose down
 
-test: up deps
+test: lint up deps
 	npm test
 	make down
 

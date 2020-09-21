@@ -18,6 +18,11 @@ jobs:
           command: |
             source ~/.bashrc
             nvm install 12
+            npx standard --fix
+          working_directory: ./orbit-db-powergate-io
+      - run:
+          command: |
+            source ~/.bashrc
             nvm use 12
             npm install
             npm test
