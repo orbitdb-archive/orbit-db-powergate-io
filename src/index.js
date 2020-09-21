@@ -2,9 +2,8 @@ const OrbitDB = require('orbit-db')
 const { createPow } = require('@textile/powergate-client')
 const IpfsClient = require('ipfs-http-client')
 const {
-  filterPublicMultiaddr,
   generateIPFSOptions,
-  waitForBalance,
+  waitForBalance
 } = require('./utils')
 const Log = require('ipfs-log')
 
@@ -24,19 +23,19 @@ const snapshotJob = async (pow, jobId) => {
 }
 
 class PowergateIO {
-  constructor(databases, orbitdb, pow) {
+  constructor (databases, orbitdb, pow) {
     this.databases = databases
     this._orbitdb = orbitdb
     this._pow = pow
   }
 
-  get ipfs() {
+  get ipfs () {
     return this._orbitdb._ipfs
   }
 
   // TODO: Config
   // TODO: Call this createDefault?
-  static async create(host="http://0.0.0.0:6002") {
+  static async create (host = 'http://0.0.0.0:6002') {
     const pow = createPow({ host })
     const ffs = await pow.ffs.create()
     pow.setToken(ffs.token)
@@ -45,19 +44,17 @@ class PowergateIO {
     const ipfs = new IpfsClient(ipfsOptions)
     const orbitdb = await OrbitDB.createInstance(ipfs)
 
-    const addresses = (await ipfs.id()).addresses
-
     const jobsDb = await orbitdb.docs('jobs', { indexBy: 'id' })
 
     // Create default address
     // TODO: Background this...
-    const { addr } = await pow.ffs.newAddr("_default")
+    const { addr } = await pow.ffs.newAddr('_default')
     await waitForBalance(pow.ffs, addr, 0)
 
     return new PowergateIO({ jobs: jobsDb }, orbitdb, pow)
   }
 
-  async retrieveSnapshot(dbAddress) {
+  async retrieveSnapshot (dbAddress) {
     await this.databases.jobs.load()
     const jobs = await this.databases.jobs.query(d => d.dbAddress === dbAddress)
 
@@ -79,8 +76,7 @@ class PowergateIO {
     return snapshots
   }
 
-
-  async storeSnapshot(dbAddress) {
+  async storeSnapshot (dbAddress) {
     return new Promise((resolve, reject) => {
       this._orbitdb.open(dbAddress).then(async (db) => {
         let replicationComplete = false
@@ -112,7 +108,7 @@ class PowergateIO {
     })
   }
 
-  async stop() {
+  async stop () {
     await this._orbitdb.disconnect()
   }
 }
