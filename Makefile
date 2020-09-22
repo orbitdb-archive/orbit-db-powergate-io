@@ -1,10 +1,15 @@
 .PHONY: test
+.PHONY: docs
+
+docs:
+	rm -rf docs
+	npx jsdoc -r src/*.js -d docs -R README.md --verbose
 
 up:
 	BIGSECTORS=true docker-compose up -d
 
 lint:
-	npx standard
+	npx standard src/ test/
 
 deps:
 	npm install
