@@ -13,6 +13,7 @@ const {
 
 const POWERGATE_HREF = process.env.POWERGATE_HREF || 'http://0.0.0.0:6002'
 const IS_REMOTE = (POWERGATE_HREF !== 'http://0.0.0.0:6002')
+const IS_LOCAL = !IS_REMOTE
 
 Object.keys(testAPIs).forEach(API => {
   describe(`PowergateIO - default options (${API})`, function () {
@@ -52,6 +53,21 @@ Object.keys(testAPIs).forEach(API => {
       await orbitdb.disconnect()
       await powergateio.stop()
       await stopIpfs(ipfsd)
+    })
+
+    it('backgrounds wallet creation and reports as pending immediately', () => {
+      assert.deepStrictEqual(powergateio.wallet, {})
+    })
+
+    it('eventually returns wallet info', (done) => {
+      const walletInterval = setInterval(() => {
+        if (JSON.stringify(powergateio.wallet) !== '{}') {
+          assert.strictEqual(powergateio.wallet.addr.name, '_default')
+          assert.strictEqual(powergateio.wallet.addr.type, 'bls')
+          clearInterval(walletInterval)
+          done()
+        }
+      }, 1000)
     })
 
     it('successfully connects with the Powergate peer', async () => {
@@ -98,6 +114,13 @@ Object.keys(testAPIs).forEach(API => {
         await db.drop()
       })
 
+      it('reports the job status immediately', async () => {
+        const reportedStatus = await powergateio.getJobStatus(jobStatus.id)
+
+        assert.strictEqual(jobStatus.cid, reportedStatus[0].cid)
+        assert.strictEqual(reportedStatus[0].status, JobStatus.JOB_STATUS_EXECUTING)
+      })
+
       it('retrieves a remote database snapshot from "hot" storage by CID', async () => {
         db2 = await orbitdb.open(db.address.toString(), { create: true })
 
@@ -127,6 +150,31 @@ Object.keys(testAPIs).forEach(API => {
           assert.strictEqual(db2.index.values[i].payload.value, `entry${i}`)
         }
       })
+
+      if (IS_LOCAL) {
+        this.timeout(240000)
+
+        it('eventually reports the job as completed', (done) => {
+          const interval = setInterval(async () => {
+            const status = await powergateio.getJobStatus(jobStatus.id)
+            if (status[0].status === JobStatus.JOB_STATUS_SUCCESS) {
+              assert(true)
+              clearInterval(interval)
+              done()
+            }
+          }, 2000)
+        })
+
+        it('does not pollute the db via watchJobs', async () => {
+          const status = await powergateio.getJobStatus(jobStatus.id)
+
+          assert.strictEqual(status[0].id, jobStatus.id)
+          assert.strictEqual(status[0].apiId, jobStatus.apiId)
+          assert.strictEqual(status[0].cid, jobStatus.cid)
+          assert.strictEqual(status[0].status, JobStatus.JOB_STATUS_SUCCESS)
+          assert.strictEqual(status[0].dbAddress, jobStatus.dbAddress)
+        })
+      }
 
       after(async () => {
         await db.close()
