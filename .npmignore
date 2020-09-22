@@ -1,0 +1,6 @@
+docs/
+test/
+.nyc_output/
+Makefile
+docker-compose.yaml
+.circleci
