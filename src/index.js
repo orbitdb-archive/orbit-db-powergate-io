@@ -7,26 +7,18 @@ const {
 } = require('./utils')
 const Log = require('ipfs-log')
 
-// Workaround wrapper function
-// To be removed once Powergate supports it officially
-const snapshotJob = async (pow, jobId) => {
-  return new Promise((resolve, reject) => {
-    try {
-      const cancel = pow.ffs.watchJobs(async (job) => {
-        resolve(job)
-        cancel()
-      }, jobId)
-    } catch (e) {
-      reject(e)
-    }
-  })
-}
-
 class PowergateIO {
-  constructor (databases, orbitdb, pow) {
+  constructor (databases, orbitdb, pow, addr) {
     this.databases = databases
     this._orbitdb = orbitdb
     this._pow = pow
+
+    this.wallet = {}
+    waitForBalance(pow.ffs, addr, 0).then((info) => {
+      this.wallet = info
+    })
+
+    this._jobWatchers = []
   }
 
   get ipfs () {
@@ -47,11 +39,14 @@ class PowergateIO {
     const jobsDb = await orbitdb.docs('jobs', { indexBy: 'id' })
 
     // Create default address
-    // TODO: Background this...
     const { addr } = await pow.ffs.newAddr('_default')
-    await waitForBalance(pow.ffs, addr, 0)
 
-    return new PowergateIO({ jobs: jobsDb }, orbitdb, pow)
+    return new PowergateIO({ jobs: jobsDb }, orbitdb, pow, addr)
+  }
+
+  async getJobStatus (jobId) {
+    await this.databases.jobs.load()
+    return this.databases.jobs.get(jobId)
   }
 
   async retrieveSnapshot (dbAddress) {
@@ -59,7 +54,6 @@ class PowergateIO {
     const jobs = await this.databases.jobs.query(d => d.dbAddress === dbAddress)
 
     const snapshots = await Promise.all(jobs.map(async (job) => {
-      // For now lets's just the the first aka 'latest"
       const bytes = await this._pow.ffs.get(job.cid)
       const snapshotData = JSON.parse((Buffer.from(bytes).toString()))
 
@@ -74,6 +68,19 @@ class PowergateIO {
     }))
 
     return snapshots
+  }
+
+  snapshotJob (jobId) {
+    return new Promise((resolve, reject) => {
+      try {
+        const cancel = this._pow.ffs.watchJobs(async (job) => {
+          resolve(job)
+          cancel()
+        }, jobId)
+      } catch (e) {
+        reject(e)
+      }
+    })
   }
 
   async storeSnapshot (dbAddress) {
@@ -94,11 +101,11 @@ class PowergateIO {
             const snapshot = await db.saveSnapshot()
             const cid = snapshot[0].hash
             const { jobId } = await this._pow.ffs.pushStorageConfig(cid)
-            const jobStatus = await snapshotJob(this._pow, jobId)
-
-            // Sanitizing for OrbitDB docstore
+            const jobStatus = await this.snapshotJob(jobId)
             jobStatus.dbAddress = dbAddress
             await this.databases.jobs.put(jobStatus)
+
+            this.watchJob(jobId)
 
             await db.drop()
             resolve(jobStatus)
@@ -108,7 +115,30 @@ class PowergateIO {
     })
   }
 
+  watchJob (jobId) {
+    const checkAndUpdate = async () => {
+      try {
+        const currentStatus = await this.getJobStatus(jobId)
+        const newStatus = await this.snapshotJob(jobId)
+        if (currentStatus[0].status !== newStatus.status) {
+          newStatus.dbAddress = currentStatus[0].dbAddress
+          await this.databases.jobs.put(newStatus)
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    checkAndUpdate()
+    const watch = setInterval(checkAndUpdate, 1000)
+    this._jobWatchers.push(watch)
+  }
+
   async stop () {
+    for (const watcher of this._jobWatchers) {
+      clearInterval(watcher)
+    }
+
     await this._orbitdb.disconnect()
   }
 }

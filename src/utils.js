@@ -16,7 +16,7 @@ function waitForBalance (ffs, address, greaterThan) {
             return
           }
           if (info.balance > greaterThan) {
-            resolve(info.balance)
+            resolve(info)
             return
           }
         } catch (e) {
