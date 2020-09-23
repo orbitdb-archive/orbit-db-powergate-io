@@ -36,6 +36,7 @@ const filterPublicMultiaddr = (addresses) => {
     .filter(a => a.indexOf('ip4/192.168') === -1)
     .filter(a => a.indexOf('ip4/10.') === -1)
     .filter(a => a.indexOf('ip4/172.1') === -1)
+    .filter(a => a.indexOf('8055') === -1) // this is a very specific port, can comment if needed
 
   return publicAddrs
 }

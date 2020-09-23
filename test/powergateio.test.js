@@ -3,7 +3,7 @@ const PowergateIO = require('../src')
 const OrbitDB = require('orbit-db')
 const { JobStatus } = require('@textile/grpc-powergate-client/dist/ffs/rpc/rpc_pb')
 const rm = require('rimraf')
-
+const { filterPublicMultiaddr } = require('../src/utils')
 const {
   config,
   startIpfs,
@@ -15,6 +15,8 @@ const POWERGATE_HREF = process.env.POWERGATE_HREF || 'http://0.0.0.0:6002'
 const IS_REMOTE = (POWERGATE_HREF !== 'http://0.0.0.0:6002')
 const IS_LOCAL = !IS_REMOTE
 
+// testAPIs here means both go-ipfs and js-ipfs, so we run the tests
+// once for each implementation of IPFS to ensure it works with both
 Object.keys(testAPIs).forEach(API => {
   describe(`PowergateIO - default options (${API})`, function () {
     let ipfsd, orbitdb, powergateio
@@ -23,32 +25,20 @@ Object.keys(testAPIs).forEach(API => {
     this.timeout(timeout)
 
     before(async () => {
+      // Delete the orbitdb folder for each test run
       rm('./orbitdb', () => {})
 
-      // TODO: Whittle away at these and figure out what's what
-      config.daemon1.config.Addresses.Swarm = [
-        '/ip4/0.0.0.0/tcp/0'
-        // "/ip6/::/tcp/0",
-        // "/ip4/0.0.0.0/udp/0/quic",
-        // "/ip6/::/udp/0/quic"
-      ]
-      config.daemon1.config.Addresses.Announce = []
-      config.daemon1.config.Addresses.NoAnnounce = []
-      config.daemon1.config.Discovery.MDNS.Interval = 10
-      config.daemon1.config.AutoNAT = {}
-      config.daemon1.config.Routing = { type: 'dht' }
-      config.daemon1.config.Swarm = {}
-      config.daemon1.config.Swarm.DisableNatPortMap = false
-
+      // Create a local ipfs node, as well as a local OrbitDB instance
       ipfsd = await startIpfs(API, config.daemon1)
-      // await ipfsd.api.bootstrap.add({ default: true })
       orbitdb = await OrbitDB.createInstance(ipfsd.api)
-      powergateio = await PowergateIO.create(POWERGATE_HREF)
 
-      // const { info } = await pow.ffs.info()
-      // const { status, messagesList } = await pow.health.check()
+      // Create our PowergateIO object now, which contains all
+      // of the abstractions from powergate.spec.js, and more
+      powergateio = await PowergateIO.create(POWERGATE_HREF)
     })
 
+    // Clean up everything. It can take a second, but the
+    // tests will eventually exit.
     after(async () => {
       await orbitdb.disconnect()
       await powergateio.stop()
@@ -56,10 +46,13 @@ Object.keys(testAPIs).forEach(API => {
     })
 
     it('backgrounds wallet creation and reports as pending immediately', () => {
+      // At first the wallet will be empty while waiting for funding.
       assert.deepStrictEqual(powergateio.wallet, {})
     })
 
     it('eventually returns wallet info', (done) => {
+      // Check the wallet every second to see when it gets funded, and
+      // assert the default values when it does.
       const walletInterval = setInterval(() => {
         if (JSON.stringify(powergateio.wallet) !== '{}') {
           assert.strictEqual(powergateio.wallet.addr.name, '_default')
@@ -71,13 +64,28 @@ Object.keys(testAPIs).forEach(API => {
     })
 
     it('successfully connects with the Powergate peer', async () => {
-      const peerId = (await ipfsd.api.id()).id
-      const addresses = (await ipfsd.api.id()).addresses
-      await powergateio.ipfs.swarm.connect(addresses[addresses.length - 1])
+      // Get the list of advertised multiaddrs from the Powergate IPFS node
+      let addresses = (await powergateio.ipfs.id()).addresses
+
+      // We have to do some finagling to ensure that we dial the correct address
+      // If it's a remote node, we want a public IP address. Opposite if not.
+      if (IS_REMOTE) {
+        addresses = filterPublicMultiaddr(addresses)
+      } else {
+        addresses = addresses
+          .filter(a => a.toString().indexOf('127.0.0.1') !== -1)
+          .filter(a => a.toString().indexOf('quic') === -1)
+      }
+
+      // Connect to the Powergate IPFS node
+      await ipfsd.api.swarm.connect(addresses[addresses.length - 1])
       const peers = await powergateio.ipfs.swarm.peers()
+      const peerId = (await ipfsd.api.id()).id
       assert(peers.filter(p => p.peer === peerId).length > 0)
     })
 
+    // On creation, PowergateIO will create an internal jobs database
+    // to keep track of snapshot cids and job statuses
     it('creates a jobs db', async () => {
       assert.strictEqual(powergateio.databases.jobs.dbname, 'jobs')
       assert.strictEqual(powergateio.databases.jobs.type, 'docstore')
@@ -88,11 +96,13 @@ Object.keys(testAPIs).forEach(API => {
       const logLength = 10
       let jobStatus
 
+      // Create a local OrbitDB database. Eventlog is the simplest type
       before(async () => {
         db = await orbitdb.eventlog('powergate-test')
       })
 
       it(`makes a local eventlog with ${logLength} items`, async () => {
+        // Simple loop to add items to the database. Experiment with logLength
         for (let i = 0; i < logLength; i++) {
           await db.add(`entry${i}`)
         }
