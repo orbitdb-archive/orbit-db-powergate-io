@@ -97,7 +97,9 @@ const PowergateIO = require('orbit-db-powergate-io')
 })()
 ```
 
-For more information, see the [API docs](https://orbitdb.github.io/orbit-db-powergate-io/PowergateIO.html).
+For more information, see the [API docs](https://orbitdb.github.io/orbit-db-powergate-io/PowergateIO.html). Also,
+the [tests](https://github.com/orbitdb/orbit-db-powergate-io/tree/master/test) are heavily commented to detail
+what is happening at each step.
 
 ## Contributing
 
