@@ -124,4 +124,6 @@ best friends. It gives you the following commands:
 
 ## License
 
-MIT © OrbitDB Community
+MIT (or Apache2.0 at your discretion)
+
+© OrbitDB Community
